@@ -98,7 +98,7 @@ echo "usagi" > /etc/hostname
 echo "root:password" | chpasswd
 
 pacman -Sy --noconfirm reflector
-reflector --latest 200 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+reflector --latest 200 --protocol https --sort rate --save /etc/pacman.d/mirrorlist --timeout 2
 sed -i '4,$d' /etc/pacman.d/mirrorlist
 pacman -Rns --noconfirm reflector
 
@@ -121,17 +121,25 @@ BOOTLOADER
 sed -i 's/^HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)/HOOKS=(base udev autodetect modconf block encrypt lvm2 filesystems keyboard fsck)/' /etc/mkinitcpio.conf
 mkinitcpio -p linux-zen
 
-pacman -S --noconfirm iwd sudo tlp xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau corectrl preload
+# Install necessary packages
+packages=(iwd sudo tlp xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau corectrl preload cpupower)
 
-systemctl enable iwd.service
-systemctl enable tlp.service
-systemctl enable preload.service
+pacman -S --noconfirm "${packages[@]}"
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to install necessary packages. Exiting."
+    exit 1
+fi
+
+# Enable necessary services
+systemctl enable iwd.service || echo "iwd.service not found, ensure package 'iwd' is installed."
+systemctl enable tlp.service || echo "tlp.service not found, ensure package 'tlp' is installed."
+systemctl enable preload.service || echo "preload.service not found, ensure package 'preload' is installed."
+systemctl enable cpupower.service || echo "cpupower.service not found, ensure package 'cpupower' is installed."
 
 echo "CPU_SCALING_GOVERNOR_ON_AC=performance" >> /etc/tlp.conf
 echo "CPU_SCALING_GOVERNOR_ON_BAT=performance" >> /etc/tlp.conf
 
 echo "governor='performance'" > /etc/default/cpupower
-systemctl enable cpupower.service
 
 echo "vm.swappiness=1" > /etc/sysctl.d/99-swappiness.conf
 
