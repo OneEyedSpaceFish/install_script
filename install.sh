@@ -98,7 +98,7 @@ echo "usagi" > /etc/hostname
 echo "root:password" | chpasswd
 
 pacman -Sy --noconfirm reflector
-reflector --latest 200 --protocol https --sort rate --save /etc/pacman.d/mirrorlist --timeout 2
+reflector --latest 200 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 sed -i '4,$d' /etc/pacman.d/mirrorlist
 pacman -Rns --noconfirm reflector
 
@@ -121,12 +121,29 @@ BOOTLOADER
 sed -i 's/^HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)/HOOKS=(base udev autodetect modconf block encrypt lvm2 filesystems keyboard fsck)/' /etc/mkinitcpio.conf
 mkinitcpio -p linux-zen
 
-# Install necessary packages
-packages=(iwd sudo tlp xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau corectrl preload cpupower)
+# Install necessary packages from official repositories
+packages=(iwd sudo tlp xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau corectrl cpupower)
 
 pacman -S --noconfirm "${packages[@]}"
 if [ $? -ne 0 ]; then
-    echo "Error: Failed to install necessary packages. Exiting."
+    echo "Error: Failed to install necessary packages from official repositories. Exiting."
+    exit 1
+fi
+
+# Install aura AUR helper
+pacman -S --noconfirm git go
+git clone https://aur.archlinux.org/aura-bin.git /tmp/aura-bin
+cd /tmp/aura-bin
+makepkg -si --noconfirm
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to install aura. Exiting."
+    exit 1
+fi
+
+# Install preload using aura
+aura -A --noconfirm preload
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to install preload from AUR. Exiting."
     exit 1
 fi
 
